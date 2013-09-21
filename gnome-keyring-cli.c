@@ -77,6 +77,248 @@ static const char* gnome_keyring_result_to_message(GnomeKeyringResult result)
 	}
 }
 
+/*
+ * Just a guess to support RHEL 4.X.
+ * Glib 2.8 was roughly Gnome 2.12 ?
+ * Which was released with gnome-keyring 0.4.3 ??
+ */
+#if GLIB_MAJOR_VERSION == 2 && GLIB_MINOR_VERSION < 8
+
+static void gnome_keyring_done_cb(GnomeKeyringResult result, gpointer user_data)
+{
+	gpointer *data = (gpointer*) user_data;
+	int *done = (int*) data[0];
+	GnomeKeyringResult *r = (GnomeKeyringResult*) data[1];
+
+	*r = result;
+	*done = 1;
+}
+
+static void prepend_string_list_item(gpointer data, gpointer user_data)
+{
+	GList **l = (GList**) user_data;
+	*l = g_list_prepend(*l, g_strdup((const char*) data));
+}
+
+static GList* dup_string_list(GList* src)
+{
+	GList *l = NULL;
+	g_list_foreach(src, prepend_string_list_item, &l);
+	return g_list_reverse(l);
+}
+
+static void gnome_keyring_get_string_list_cb(GnomeKeyringResult result, GList *list, gpointer user_data)
+{
+	gpointer *data = (gpointer*) user_data;
+	int *done = (int*) data[0];
+	GnomeKeyringResult *r = (GnomeKeyringResult*) data[1];
+	GList **l = (GList **) data[2];
+
+	*r = result;
+	if (result == GNOME_KEYRING_RESULT_OK)
+		*l = dup_string_list(list);
+	*done = 1;
+}
+
+static void gnome_keyring_get_int_list_cb(GnomeKeyringResult result, GList *list, gpointer user_data)
+{
+	gpointer *data = (gpointer*) user_data;
+	int *done = (int*) data[0];
+	GnomeKeyringResult *r = (GnomeKeyringResult*) data[1];
+	GList **l = (GList **) data[2];
+
+	*r = result;
+	if (result == GNOME_KEYRING_RESULT_OK)
+		*l = g_list_copy(list);
+	*done = 1;
+}
+
+static void gnome_keyring_get_string_cb(GnomeKeyringResult result, const char *string, gpointer user_data)
+{
+	gpointer *data = (gpointer*) user_data;
+	int *done = (int*) data[0];
+	GnomeKeyringResult *r = (GnomeKeyringResult*) data[1];
+	char **s = (char**) data[2];
+
+	*r = result;
+	if (result == GNOME_KEYRING_RESULT_OK)
+		*s = g_strdup(string);
+	*done = 1;
+}
+
+static void gnome_keyring_get_info_cb(GnomeKeyringResult result, GnomeKeyringInfo *info, gpointer user_data)
+{
+	gpointer *data = (gpointer*) user_data;
+	int *done = (int*) data[0];
+	GnomeKeyringResult *r = (GnomeKeyringResult*) data[1];
+	GnomeKeyringInfo **i = (GnomeKeyringInfo**) data[2];
+
+	*r = result;
+	if (result == GNOME_KEYRING_RESULT_OK)
+		*i = gnome_keyring_info_copy(info);
+	*done = 1;
+}
+
+static void gnome_keyring_get_item_info_cb(GnomeKeyringResult result, GnomeKeyringItemInfo *info, gpointer user_data)
+{
+	gpointer *data = (gpointer*) user_data;
+	int *done = (int*) data[0];
+	GnomeKeyringResult *r = (GnomeKeyringResult*) data[1];
+	GnomeKeyringItemInfo **i = (GnomeKeyringItemInfo**) data[2];
+
+	*r = result;
+	if (result == GNOME_KEYRING_RESULT_OK)
+		*i = gnome_keyring_item_info_copy(info);
+	*done = 1;
+}
+
+static void wait_for_request_completion(int *done)
+{
+	GMainContext *mc = g_main_context_default();
+	while (!*done)
+		g_main_context_iteration(mc, TRUE);
+}
+
+static GnomeKeyringResult gnome_keyring_unlock_sync(const char *keyring, const char *password)
+{
+	int done = 0;
+	GnomeKeyringResult result;
+	gpointer data[] = { &done, &result };
+
+	gnome_keyring_unlock(keyring, password, gnome_keyring_done_cb, data,
+		NULL);
+
+	wait_for_request_completion(&done);
+
+	return result;
+}
+
+static GnomeKeyringResult gnome_keyring_lock_sync(const char *keyring)
+{
+	int done = 0;
+	GnomeKeyringResult result;
+	gpointer data[] = { &done, &result };
+
+	gnome_keyring_lock(keyring, gnome_keyring_done_cb, data, NULL);
+
+	wait_for_request_completion(&done);
+
+	return result;
+}
+
+static GnomeKeyringResult gnome_keyring_list_keyring_names_sync(GList **keyrings)
+{
+	int done = 0;
+	GnomeKeyringResult result;
+	gpointer data[] = { &done, &result, keyrings };
+
+	*keyrings = NULL;
+
+	gnome_keyring_list_keyring_names(gnome_keyring_get_string_list_cb,
+		data, NULL);
+
+	wait_for_request_completion(&done);
+
+	return result;
+}
+
+static GnomeKeyringResult gnome_keyring_item_get_info_sync(const char *keyring, guint32 id, GnomeKeyringItemInfo **info)
+{
+	int done = 0;
+	GnomeKeyringResult result;
+	gpointer data[] = { &done, &result, info };
+
+	gnome_keyring_item_get_info(keyring, id,
+		gnome_keyring_get_item_info_cb, data, NULL);
+
+	wait_for_request_completion(&done);
+
+	return result;
+}
+
+static GnomeKeyringResult gnome_keyring_list_item_ids_sync(const char *keyring, GList **ids)
+{
+	int done = 0;
+	GnomeKeyringResult result;
+	gpointer data[] = { &done, &result, ids };
+
+	gnome_keyring_list_item_ids(keyring, gnome_keyring_get_int_list_cb,
+		data, NULL);
+
+	wait_for_request_completion(&done);
+
+	return result;
+}
+
+static GnomeKeyringResult gnome_keyring_get_default_keyring_sync(char **keyring)
+{
+	int done = 0;
+	GnomeKeyringResult result;
+	gpointer data[] = { &done, &result, keyring };
+
+	gnome_keyring_get_default_keyring(gnome_keyring_get_string_cb, data,
+		NULL);
+
+	wait_for_request_completion(&done);
+
+	return result;
+}
+
+static GnomeKeyringResult gnome_keyring_get_info_sync(const char *keyring, GnomeKeyringInfo **info)
+{
+	int done = 0;
+	GnomeKeyringResult result;
+	gpointer data[] = { &done, &result, info };
+
+	gnome_keyring_get_info(keyring, gnome_keyring_get_info_cb, data, NULL);
+
+	wait_for_request_completion(&done);
+
+	return result;
+}
+
+static GnomeKeyringResult gnome_keyring_create_sync(const char *keyring, const char *password)
+{
+	int done = 0;
+	GnomeKeyringResult result;
+	gpointer data[] = { &done, &result };
+
+	gnome_keyring_create(keyring, password, gnome_keyring_done_cb, data,
+		NULL);
+
+	wait_for_request_completion(&done);
+
+	return result;
+}
+
+static GnomeKeyringResult gnome_keyring_delete_sync(const char *keyring)
+{
+	int done = 0;
+	GnomeKeyringResult result;
+	gpointer data[] = { &done, &result };
+
+	gnome_keyring_delete(keyring, gnome_keyring_done_cb, data, NULL);
+
+	wait_for_request_completion(&done);
+
+	return result;
+}
+
+static GnomeKeyringResult gnome_keyring_item_delete_sync(const char *keyring, guint32 id)
+{
+	int done = 0;
+	GnomeKeyringResult result;
+	gpointer data[] = { &done, &result };
+
+	gnome_keyring_item_delete(keyring, id, gnome_keyring_done_cb, data,
+		NULL);
+
+	wait_for_request_completion(&done);
+
+	return result;
+}
+
+#endif
 #endif
 
 static int term_fd = -1;

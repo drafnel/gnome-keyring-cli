@@ -392,9 +392,10 @@ static const char* gnome_keyring_itemtype_to_string(GnomeKeyringItemType t)
 		return "ENCRYPTION_KEY_PASSWORD";
 	case GNOME_KEYRING_ITEM_PK_STORAGE:
 		return "PK_STORAGE";
-#endif
+#else
 	case GNOME_KEYRING_ITEM_NO_TYPE:
 		return "NO_TYPE";
+#endif
 	default:
 		snprintf(type_string, sizeof(type_string),
 			"Unrecognized Type (%u)", t);

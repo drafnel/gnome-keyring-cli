@@ -72,9 +72,9 @@ static const char* gnome_keyring_result_to_message(GnomeKeyringResult result)
 		return "Cancelled";
 	case GNOME_KEYRING_RESULT_ALREADY_EXISTS:
 		return "Already Exists";
-	default:
-		return "Unknown Error";
 	}
+
+	return "Unknown Error";
 }
 
 /*
@@ -83,6 +83,7 @@ static const char* gnome_keyring_result_to_message(GnomeKeyringResult result)
  * Which was released with gnome-keyring 0.4.3 ??
  */
 #if GLIB_MAJOR_VERSION == 2 && GLIB_MINOR_VERSION < 8
+#define REALLY_ANCIENT_GNOME_KEYRING
 
 static void gnome_keyring_done_cb(GnomeKeyringResult result, gpointer user_data)
 {
@@ -394,13 +395,17 @@ static const char* gnome_keyring_itemtype_to_string(GnomeKeyringItemType t)
 		return "PK_STORAGE";
 #else
 	case GNOME_KEYRING_ITEM_NO_TYPE:
-		return "NO_TYPE";
+#ifndef REALLY_ANCIENT_GNOME_KEYRING
+	case GNOME_KEYRING_ITEM_APPLICATION_SECRET:
 #endif
-	default:
-		snprintf(type_string, sizeof(type_string),
-			"Unrecognized Type (%u)", t);
-		return type_string;
+#endif
+	case GNOME_KEYRING_ITEM_LAST_TYPE:
+		break;
 	}
+
+	snprintf(type_string, sizeof(type_string), "Unrecognized Type (%u)", t);
+
+	return type_string;
 }
 
 #define PROMPT_BUF_SIZE 1024

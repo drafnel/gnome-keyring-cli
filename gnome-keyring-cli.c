@@ -20,13 +20,13 @@
 
 #ifdef GNOME_KEYRING_DEFAULT
 
-   /* Modern gnome-keyring */
+/* Modern gnome-keyring */
 
 #include <gnome-keyring-memory.h>
 
 #else
 
-   /*
+/*
     * Support ancient gnome-keyring, circ. RHEL 5.X.
     * GNOME_KEYRING_DEFAULT seems to have been introduced with Gnome 2.22,
     * and the other features roughly around Gnome 2.20, 6 months before.
@@ -328,84 +328,84 @@ static struct termios old_term;
 /* lifted from compat/terminal.c in the git sources */
 static int restore_term(void)
 {
-	int status = 0;
+    int status = 0;
 
-	if (term_fd < 0)
-		return 0;
+    if (term_fd < 0)
+        return 0;
 
-	if (tcsetattr(term_fd, TCSAFLUSH, &old_term)) {
-		perror("failed to restore terminal settings");
-		status = 1;
-	}
+    if (tcsetattr(term_fd, TCSAFLUSH, &old_term)) {
+        perror("failed to restore terminal settings");
+        status = 1;
+    }
 
-	close(term_fd);
-	term_fd = -1;
+    close(term_fd);
+    term_fd = -1;
 
-	return status;
+    return status;
 }
 
 static int disable_echo(void)
 {
-	struct termios t;
+    struct termios t;
 
-	term_fd = open("/dev/tty", O_RDWR);
-	if (term_fd == -1) {
-		perror("failed to open /dev/tty for writing");
-		return -1;
-	}
+    term_fd = open("/dev/tty", O_RDWR);
+    if (term_fd == -1) {
+        perror("failed to open /dev/tty for writing");
+        return -1;
+    }
 
-	if (tcgetattr(term_fd, &t) < 0) {
-		perror("failed getting terminal attributes");
-		goto error;
-	}
+    if (tcgetattr(term_fd, &t) < 0) {
+        perror("failed getting terminal attributes");
+        goto error;
+    }
 
-	old_term = t;
+    old_term = t;
 
-	/* install sighandler to restore terminal */
+    /* install sighandler to restore terminal */
 
-	t.c_lflag &= ~ECHO;
-	if (!tcsetattr(term_fd, TCSAFLUSH, &t))
-		return 0;
+    t.c_lflag &= ~ECHO;
+    if (!tcsetattr(term_fd, TCSAFLUSH, &t))
+        return 0;
 
-	perror("failed to set terminal attributes");
+    perror("failed to set terminal attributes");
 
-error:
-	close(term_fd);
-	term_fd = -1;
-	return -1;
+    error:
+    close(term_fd);
+    term_fd = -1;
+    return -1;
 }
 
 static const char* gnome_keyring_itemtype_to_string(GnomeKeyringItemType t)
 {
-	static char type_string[32];
+    static char type_string[32];
 
-	switch (t) {
-	case GNOME_KEYRING_ITEM_GENERIC_SECRET:
-		return "GENERIC_SECRET";
-	case GNOME_KEYRING_ITEM_NETWORK_PASSWORD:
-		return "NETWORK_PASSWORD";
-	case GNOME_KEYRING_ITEM_NOTE:
-		return "NOTE";
+    switch (t) {
+        case GNOME_KEYRING_ITEM_GENERIC_SECRET:
+            return "GENERIC_SECRET";
+        case GNOME_KEYRING_ITEM_NETWORK_PASSWORD:
+            return "NETWORK_PASSWORD";
+        case GNOME_KEYRING_ITEM_NOTE:
+            return "NOTE";
 #ifndef ANCIENT_GNOME_KEYRING
-	case GNOME_KEYRING_ITEM_CHAINED_KEYRING_PASSWORD:
-		return "CHAINED_KEYRING_PASSWORD";
-	case GNOME_KEYRING_ITEM_ENCRYPTION_KEY_PASSWORD:
-		return "ENCRYPTION_KEY_PASSWORD";
-	case GNOME_KEYRING_ITEM_PK_STORAGE:
-		return "PK_STORAGE";
+        case GNOME_KEYRING_ITEM_CHAINED_KEYRING_PASSWORD:
+            return "CHAINED_KEYRING_PASSWORD";
+        case GNOME_KEYRING_ITEM_ENCRYPTION_KEY_PASSWORD:
+            return "ENCRYPTION_KEY_PASSWORD";
+        case GNOME_KEYRING_ITEM_PK_STORAGE:
+            return "PK_STORAGE";
 #else
-	case GNOME_KEYRING_ITEM_NO_TYPE:
+        case GNOME_KEYRING_ITEM_NO_TYPE:
 #ifndef REALLY_ANCIENT_GNOME_KEYRING
 	case GNOME_KEYRING_ITEM_APPLICATION_SECRET:
 #endif
 #endif
-	case GNOME_KEYRING_ITEM_LAST_TYPE:
-		break;
-	}
+        case GNOME_KEYRING_ITEM_LAST_TYPE:
+            break;
+    }
 
-	snprintf(type_string, sizeof(type_string), "Unrecognized Type (%u)", t);
+    snprintf(type_string, sizeof(type_string), "Unrecognized Type (%u)", t);
 
-	return type_string;
+    return type_string;
 }
 
 #define PROMPT_BUF_SIZE 1024
@@ -413,574 +413,675 @@ static const char* gnome_keyring_itemtype_to_string(GnomeKeyringItemType t)
 
 static char* prompt_user(const char *prompt, int flags)
 {
-	char *value;
-	size_t len;
+    char *value;
+    size_t len;
 
-	int noecho = (flags & PROMPT_NO_ECHO);
+    int noecho = (flags & PROMPT_NO_ECHO);
 
-	if (noecho && disable_echo())
-		g_warning("failed to disable terminal echo");
+    if (noecho && disable_echo())
+        g_warning("failed to disable terminal echo");
 
-	fputs(prompt, stdout);
-	fflush(stdout);
+    fputs(prompt, stdout);
+    fflush(stdout);
 
-	value = noecho ? gnome_keyring_memory_alloc(PROMPT_BUF_SIZE) :
-	    g_malloc(PROMPT_BUF_SIZE);
+    value = noecho ? gnome_keyring_memory_alloc(PROMPT_BUF_SIZE) :
+            g_malloc(PROMPT_BUF_SIZE);
 
-	if (!fgets(value, PROMPT_BUF_SIZE, stdin))
-		value[0] = '\0';
+    if (!fgets(value, PROMPT_BUF_SIZE, stdin))
+        value[0] = '\0';
 
-	if (noecho) {
-		putchar('\n');
-		fflush(stdout);
-		restore_term();
-	}
+    if (noecho) {
+        putchar('\n');
+        fflush(stdout);
+        restore_term();
+    }
 
-	len = strlen(value);
+    len = strlen(value);
 
-	if (len && value[len-1] == '\n')
-		value[--len] = '\0';
+    if (len && value[len-1] == '\n')
+        value[--len] = '\0';
 
-	if (!len) {
-		if (noecho)
-			gnome_keyring_memory_free(value);
-		else
-			g_free(value);
-		return NULL;
-	}
+    if (!len) {
+        if (noecho)
+            gnome_keyring_memory_free(value);
+        else
+            g_free(value);
+        return NULL;
+    }
 
-	return value;
+    return value;
 }
 
 static int unlock_keyring(int argc, char *argv[])
 {
-	const char *keyring = GNOME_KEYRING_DEFAULT;
-	char *pass;
-	GnomeKeyringResult result;
+    const char *keyring = GNOME_KEYRING_DEFAULT;
+    char *pass;
+    GnomeKeyringResult result;
 
-	if (argc > 2) {
-		fprintf(stderr, "Usage: %s [keyring]\n", argv[0]);
-		return 1;
-	}
+    if (argc > 2) {
+        fprintf(stderr, "Usage: %s [keyring]\n", argv[0]);
+        return 1;
+    }
 
-	if (argc == 2)
-		keyring = argv[1];
+    if (argc == 2)
+        keyring = argv[1];
 
-	pass = prompt_user("Keyring password: ", PROMPT_NO_ECHO);
+    pass = prompt_user("Keyring password: ", PROMPT_NO_ECHO);
 
-	result = gnome_keyring_unlock_sync(keyring, pass);
+    result = gnome_keyring_unlock_sync(keyring, pass);
 
-	gnome_keyring_memory_free(pass);
+    gnome_keyring_memory_free(pass);
 
-	if (result != GNOME_KEYRING_RESULT_OK) {
-		g_critical("failed unlocking keyring: %s",
-			gnome_keyring_result_to_message(result));
-		return 1;
-	}
+    if (result != GNOME_KEYRING_RESULT_OK) {
+        g_critical("failed unlocking keyring: %s",
+                   gnome_keyring_result_to_message(result));
+        return 1;
+    }
 
-	return 0;
+    return 0;
 }
 
 static int lock_keyring(int argc, char *argv[])
 {
-	const char *keyring = GNOME_KEYRING_DEFAULT;
-	GnomeKeyringResult result;
+    const char *keyring = GNOME_KEYRING_DEFAULT;
+    GnomeKeyringResult result;
 
-	if (argc > 2) {
-		fprintf(stderr, "Usage: %s [keyring]\n", argv[0]);
-		return 1;
-	}
+    if (argc > 2) {
+        fprintf(stderr, "Usage: %s [keyring]\n", argv[0]);
+        return 1;
+    }
 
-	if (argc == 2)
-		keyring = argv[1];
+    if (argc == 2)
+        keyring = argv[1];
 
-	result = gnome_keyring_lock_sync(keyring);
+    result = gnome_keyring_lock_sync(keyring);
 
-	if (result != GNOME_KEYRING_RESULT_OK) {
-		g_critical("failed locking keyring: %s",
-			gnome_keyring_result_to_message(result));
-		return 1;
-	}
+    if (result != GNOME_KEYRING_RESULT_OK) {
+        g_critical("failed locking keyring: %s",
+                   gnome_keyring_result_to_message(result));
+        return 1;
+    }
 
-	return 0;
+    return 0;
 }
 
 static void print_string_list_entry(gpointer data, gpointer unused_user_data)
 {
-	puts((const char*) data);
+    puts((const char*) data);
 }
 
 static int list_keyrings(int argc, char *argv[])
 {
-	GList *keyrings;
-	GnomeKeyringResult result;
+    GList *keyrings;
+    GnomeKeyringResult result;
 
-	if (argc > 1) {
-		fprintf(stderr, "Usage: %s\n", argv[0]);
-		return 1;
-	}
+    if (argc > 1) {
+        fprintf(stderr, "Usage: %s\n", argv[0]);
+        return 1;
+    }
 
-	result = gnome_keyring_list_keyring_names_sync(&keyrings);
+    result = gnome_keyring_list_keyring_names_sync(&keyrings);
 
-	if (result != GNOME_KEYRING_RESULT_OK) {
-		g_critical("failed getting list of keyrings: %s",
-			gnome_keyring_result_to_message(result));
-		return 1;
-	}
+    if (result != GNOME_KEYRING_RESULT_OK) {
+        g_critical("failed getting list of keyrings: %s",
+                   gnome_keyring_result_to_message(result));
+        return 1;
+    }
 
-	g_list_foreach(keyrings, print_string_list_entry, NULL);
+    g_list_foreach(keyrings, print_string_list_entry, NULL);
 
-	gnome_keyring_string_list_free(keyrings);
+    gnome_keyring_string_list_free(keyrings);
 
-	return 0;
+    return 0;
 }
 
 static void print_keyring_item(gpointer data, gpointer user_data)
 {
-	guint32 id = GPOINTER_TO_UINT(data);
-	gpointer *vals = (gpointer*) user_data;
-	int *status = (int*) vals[0];
-	const char* keyring = (const char*) vals[1];
-	GnomeKeyringItemInfo *info;
-	GnomeKeyringResult result;
-	GnomeKeyringItemType type;
-	time_t t;
-	char *s;
+    guint32 id = GPOINTER_TO_UINT(data);
+    gpointer *vals = (gpointer*) user_data;
+    int *status = (int*) vals[0];
+    const char* keyring = (const char*) vals[1];
+    GnomeKeyringItemInfo *info;
+    GnomeKeyringResult result;
+    GnomeKeyringItemType type;
+    time_t t;
+    char *s;
 
-	result = gnome_keyring_item_get_info_sync(keyring, id, &info);
+    result = gnome_keyring_item_get_info_sync(keyring, id, &info);
 
-	if (result != GNOME_KEYRING_RESULT_OK) {
-		g_critical("failed getting item info: %s",
-			gnome_keyring_result_to_message(result));
-		*status = 1;
-		return;
-	}
+    if (result != GNOME_KEYRING_RESULT_OK) {
+        g_critical("failed getting item info: %s",
+                   gnome_keyring_result_to_message(result));
+        *status = 1;
+        return;
+    }
 
-	printf("---\n");
+    printf("---\n");
 
-	type = gnome_keyring_item_info_get_type(info);
+    type = gnome_keyring_item_info_get_type(info);
 
-	printf("Type: %s\n", gnome_keyring_itemtype_to_string(type));
+    printf("Type: %s\n", gnome_keyring_itemtype_to_string(type));
 
-	s = gnome_keyring_item_info_get_display_name(info);
+    s = gnome_keyring_item_info_get_display_name(info);
 
-	printf("Name: %s\n", s);
+    printf("Name: %s\n", s);
 
-	g_free(s);
+    g_free(s);
 
-	s = gnome_keyring_item_info_get_secret(info);
+    s = gnome_keyring_item_info_get_secret(info);
 
-	printf("Secret: %s\n", s);
+    printf("Secret: %s\n", s);
 
-	gnome_keyring_memory_free(s);
+    gnome_keyring_memory_free(s);
 
-	t = gnome_keyring_item_info_get_mtime(info);
-	printf("mtime: %s", ctime(&t));
+    t = gnome_keyring_item_info_get_mtime(info);
+    printf("mtime: %s", ctime(&t));
 
-	t = gnome_keyring_item_info_get_ctime(info);
-	printf("ctime: %s", ctime(&t));
+    t = gnome_keyring_item_info_get_ctime(info);
+    printf("ctime: %s", ctime(&t));
 
-	gnome_keyring_item_info_free(info);
+    gnome_keyring_item_info_free(info);
 }
 
 static int list_items(int argc, char *argv[])
 {
-	GList *items;
-	char *keyring = NULL;
-	GnomeKeyringResult result;
-	int status = 0;
-	gpointer data[2] = { &status, NULL };
+    GList *items;
+    char *keyring = NULL;
+    GnomeKeyringResult result;
+    int status = 0;
+    gpointer data[2] = { &status, NULL };
 
-	if (argc > 2) {
-		fprintf(stderr, "Usage: %s [keyring]\n", argv[0]);
-		return 1;
-	}
+    if (argc > 2) {
+        fprintf(stderr, "Usage: %s [keyring]\n", argv[0]);
+        return 1;
+    }
 
-	if (argc == 2)
-		keyring = g_strdup(argv[1]);
+    if (argc == 2)
+        keyring = g_strdup(argv[1]);
 
-	if (!keyring) {
-		result = gnome_keyring_get_default_keyring_sync(&keyring);
+    if (!keyring) {
+        result = gnome_keyring_get_default_keyring_sync(&keyring);
 
-		if (result != GNOME_KEYRING_RESULT_OK) {
-			g_critical("failed getting default keyring name: %s",
-				gnome_keyring_result_to_message(result));
-			return 1;
-		}
+        if (result != GNOME_KEYRING_RESULT_OK) {
+            g_critical("failed getting default keyring name: %s",
+                       gnome_keyring_result_to_message(result));
+            return 1;
+        }
 
-		printf("Default keyring: %s\n", keyring);
-	}
+        printf("Default keyring: %s\n", keyring);
+    }
 
-	result = gnome_keyring_list_item_ids_sync(keyring, &items);
+    result = gnome_keyring_list_item_ids_sync(keyring, &items);
 
-	if (result != GNOME_KEYRING_RESULT_OK) {
-		g_critical("failed getting list of items: %s",
-			gnome_keyring_result_to_message(result));
-		g_free(keyring);
-		return 1;
-	}
+    if (result != GNOME_KEYRING_RESULT_OK) {
+        g_critical("failed getting list of items: %s",
+                   gnome_keyring_result_to_message(result));
+        g_free(keyring);
+        return 1;
+    }
 
-	data[1] = keyring;
+    data[1] = keyring;
 
-	g_list_foreach(items, print_keyring_item, data);
+    g_list_foreach(items, print_keyring_item, data);
 
-	g_free(keyring);
+    g_free(keyring);
 
-	g_list_free(items);
+    g_list_free(items);
 
-	return status;
+    return status;
 }
 
 static int get_keyring_info(int argc, char *argv[])
 {
-	GnomeKeyringInfo *kinfo;
-	char *keyring = NULL;
-	time_t t;
-	GnomeKeyringResult result;
+    GnomeKeyringInfo *kinfo;
+    char *keyring = NULL;
+    time_t t;
+    GnomeKeyringResult result;
 
-	if (argc > 2) {
-		fprintf(stderr, "Usage: %s [keyring]\n", argv[0]);
-		return 1;
-	}
+    if (argc > 2) {
+        fprintf(stderr, "Usage: %s [keyring]\n", argv[0]);
+        return 1;
+    }
 
-	if (argc == 2)
-		keyring = g_strdup(argv[1]);
+    if (argc == 2)
+        keyring = g_strdup(argv[1]);
 
-	if (!keyring) {
-		result = gnome_keyring_get_default_keyring_sync(&keyring);
+    if (!keyring) {
+        result = gnome_keyring_get_default_keyring_sync(&keyring);
 
-		if (result != GNOME_KEYRING_RESULT_OK) {
-			g_critical("failed getting default keyring name: %s",
-				gnome_keyring_result_to_message(result));
-			return 1;
-		}
+        if (result != GNOME_KEYRING_RESULT_OK) {
+            g_critical("failed getting default keyring name: %s",
+                       gnome_keyring_result_to_message(result));
+            return 1;
+        }
 
-		printf("Default keyring name: %s\n", keyring);
-	}
+        printf("Default keyring name: %s\n", keyring);
+    }
 
-	result = gnome_keyring_get_info_sync(keyring, &kinfo);
+    result = gnome_keyring_get_info_sync(keyring, &kinfo);
 
-	if (result != GNOME_KEYRING_RESULT_OK) {
-		g_critical("failed getting keyring info: %s",
-			gnome_keyring_result_to_message(result));
-		return 1;
-	}
+    if (result != GNOME_KEYRING_RESULT_OK) {
+        g_critical("failed getting keyring info: %s",
+                   gnome_keyring_result_to_message(result));
+        return 1;
+    }
 
-	g_free(keyring);
+    g_free(keyring);
 
-	fputs("Locked: ", stdout);
-	if (gnome_keyring_info_get_is_locked(kinfo))
-		puts("yes");
-	else
-		puts("no");
+    fputs("Locked: ", stdout);
+    if (gnome_keyring_info_get_is_locked(kinfo))
+        puts("yes");
+    else
+        puts("no");
 
-	fputs("Lock-on-idle: ", stdout);
-	if (gnome_keyring_info_get_lock_on_idle(kinfo))
-		printf("%u\n", gnome_keyring_info_get_lock_timeout(kinfo));
-	else
-		puts("no");
+    fputs("Lock-on-idle: ", stdout);
+    if (gnome_keyring_info_get_lock_on_idle(kinfo))
+        printf("%u\n", gnome_keyring_info_get_lock_timeout(kinfo));
+    else
+        puts("no");
 
-	t = gnome_keyring_info_get_mtime(kinfo);
-	printf("mtime: %s", ctime(&t));
+    t = gnome_keyring_info_get_mtime(kinfo);
+    printf("mtime: %s", ctime(&t));
 
-	t = gnome_keyring_info_get_ctime(kinfo);
-	printf("ctime: %s", ctime(&t));
+    t = gnome_keyring_info_get_ctime(kinfo);
+    printf("ctime: %s", ctime(&t));
 
-	gnome_keyring_info_free(kinfo);
+    gnome_keyring_info_free(kinfo);
 
-	return 0;
+    return 0;
 }
 
 static int create_keyring(int argc, char *argv[])
 {
-	char *keyring;
-	char *pass;
-	GnomeKeyringResult result;
+    char *keyring;
+    char *pass;
+    GnomeKeyringResult result;
 
-	if (argc != 2) {
-		fprintf(stderr, "Usage: %s keyring\n", argv[0]);
-		return 1;
-	}
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s keyring\n", argv[0]);
+        return 1;
+    }
 
-	keyring = argv[1];
+    keyring = argv[1];
 
-	pass = prompt_user("Keyring password: ", PROMPT_NO_ECHO);
+    pass = prompt_user("Keyring password: ", PROMPT_NO_ECHO);
 
-	result = gnome_keyring_create_sync(keyring, pass);
+    result = gnome_keyring_create_sync(keyring, pass);
 
-	gnome_keyring_memory_free(pass);
+    gnome_keyring_memory_free(pass);
 
-	if (result != GNOME_KEYRING_RESULT_OK) {
-		g_critical("failed creating keyring: %s",
-			gnome_keyring_result_to_message(result));
-		return 1;
-	}
+    if (result != GNOME_KEYRING_RESULT_OK) {
+        g_critical("failed creating keyring: %s",
+                   gnome_keyring_result_to_message(result));
+        return 1;
+    }
 
-	return 0;
+    return 0;
 }
 
 static int delete_keyring(int argc, char *argv[])
 {
-	char *keyring;
-	GnomeKeyringResult result;
+    char *keyring;
+    GnomeKeyringResult result;
 
-	if (argc != 2) {
-		fprintf(stderr, "Usage: %s keyring\n", argv[0]);
-		return 1;
-	}
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s keyring\n", argv[0]);
+        return 1;
+    }
 
-	keyring = argv[1];
+    keyring = argv[1];
 
-	result = gnome_keyring_delete_sync(keyring);
+    result = gnome_keyring_delete_sync(keyring);
 
-	if (result != GNOME_KEYRING_RESULT_OK) {
-		g_critical("failed deleting keyring: %s",
-			gnome_keyring_result_to_message(result));
-		return 1;
-	}
+    if (result != GNOME_KEYRING_RESULT_OK) {
+        g_critical("failed deleting keyring: %s",
+                   gnome_keyring_result_to_message(result));
+        return 1;
+    }
 
-	return 0;
+    return 0;
 }
 
 static void print_network_passwords(gpointer data, gpointer unused_user_data)
 {
-	GnomeKeyringNetworkPasswordData *pw =
-	    (GnomeKeyringNetworkPasswordData*) data;
+    GnomeKeyringNetworkPasswordData *pw =
+        (GnomeKeyringNetworkPasswordData*) data;
 
-	printf("---\n"
-	       "Keyring: %s\n"
-	       "id: %u\n"
-	       "protocol: %s\n"
-	       "server: %s\n"
-	       "object: %s\n"
-	       "authtype: %s\n"
-	       "port: %u\n"
-	       "user: %s\n"
-	       "domain: %s\n"
-	       "password: %s\n",
-	       pw->keyring,
-	       pw->item_id,
-	       pw->protocol,
-	       pw->server,
-	       pw->object,
-	       pw->authtype,
-	       pw->port,
-	       pw->user,
-	       pw->domain,
-	       pw->password);
+    printf("---\n"
+           "Keyring: %s\n"
+           "id: %u\n"
+           "protocol: %s\n"
+           "server: %s\n"
+           "object: %s\n"
+           "authtype: %s\n"
+           "port: %u\n"
+           "user: %s\n"
+           "domain: %s\n"
+           "password: %s\n",
+           pw->keyring,
+           pw->item_id,
+           pw->protocol,
+           pw->server,
+           pw->object,
+           pw->authtype,
+           pw->port,
+           pw->user,
+           pw->domain,
+           pw->password);
 }
 
 static int lookup_item(int argc, char *argv[])
 {
-	GnomeKeyringResult result;
-	GList *entries;
-	char *user;
-	char *domain;
-	char *server;
-	char *object;
-	char *protocol;
-	char *authtype;
-	char *s_port;
-	guint32 port = 0;
+    GnomeKeyringResult result;
+    GList *entries;
+    char *user;
+    char *domain;
+    char *server;
+    char *object;
+    char *protocol;
+    char *authtype;
+    char *s_port;
+    guint32 port = 0;
 
-	if (argc != 1) {
-		fprintf(stderr, "Usage: %s\n", argv[0]);
-		return 1;
-	}
+    if (argc != 1) {
+        fprintf(stderr, "Usage: %s\n", argv[0]);
+        return 1;
+    }
 
-	user = prompt_user("User: ", 0);
-	domain = prompt_user("Domain: ", 0);
-	server = prompt_user("Server: ", 0);
-	protocol = prompt_user("Protocol: ", 0);
-	object = prompt_user("Object: ", 0);
-	authtype = prompt_user("AuthType: ", 0);
-	s_port = prompt_user("Port: ", 0);
+    user = prompt_user("User: ", 0);
+    domain = prompt_user("Domain: ", 0);
+    server = prompt_user("Server: ", 0);
+    protocol = prompt_user("Protocol: ", 0);
+    object = prompt_user("Object: ", 0);
+    authtype = prompt_user("AuthType: ", 0);
+    s_port = prompt_user("Port: ", 0);
 
-	if (s_port)
-		sscanf(s_port, "%u", &port);
+    if (s_port)
+        sscanf(s_port, "%u", &port);
 
-	g_free(s_port);
+    g_free(s_port);
 
-	result = gnome_keyring_find_network_password_sync(user, domain,
-                server, object, protocol, authtype, port, &entries);
+    result = gnome_keyring_find_network_password_sync(user, domain,
+                                                      server, object, protocol, authtype, port, &entries);
 
-	g_free(user);
-	g_free(domain);
-	g_free(server);
-	g_free(protocol);
-	g_free(object);
-	g_free(authtype);
+    g_free(user);
+    g_free(domain);
+    g_free(server);
+    g_free(protocol);
+    g_free(object);
+    g_free(authtype);
 
-	if (result != GNOME_KEYRING_RESULT_OK) {
-		g_critical("failed searching for entries: %s",
-			gnome_keyring_result_to_message(result));
-		return 1;
-	}
+    if (result != GNOME_KEYRING_RESULT_OK) {
+        g_critical("failed searching for entries: %s",
+                   gnome_keyring_result_to_message(result));
+        return 1;
+    }
 
-	g_list_foreach(entries, print_network_passwords, NULL);
+    g_list_foreach(entries, print_network_passwords, NULL);
 
-	gnome_keyring_network_password_list_free(entries);
+    gnome_keyring_network_password_list_free(entries);
 
-	return 0;
+    return 0;
 }
 
 static int store_item(int argc, char *argv[])
 {
-	char *keyring = NULL;
-	GnomeKeyringResult result;
-	char *user;
-	char *pass;
-	char *domain;
-	char *server;
-	char *object;
-	char *protocol;
-	char *authtype;
-	char *s_port;
-	guint32 port = 0;
-	guint32 item_id;
+    char *keyring = NULL;
+    GnomeKeyringResult result;
+    char *user;
+    char *pass;
+    char *domain;
+    char *server;
+    char *object;
+    char *protocol;
+    char *authtype;
+    char *s_port;
+    guint32 port = 0;
+    guint32 item_id;
 
-	if (argc > 2) {
-		fprintf(stderr, "Usage: %s [keyring]\n", argv[0]);
-		return 1;
-	}
+    if (argc > 2) {
+        fprintf(stderr, "Usage: %s [keyring]\n", argv[0]);
+        return 1;
+    }
 
-	if (argc == 2)
-		keyring = argv[1];
+    if (argc == 2)
+        keyring = argv[1];
 
-	user = prompt_user("User: ", 0);
-	domain = prompt_user("Domain: ", 0);
-	server = prompt_user("Server: ", 0);
-	protocol = prompt_user("Protocol: ", 0);
-	object = prompt_user("Object: ", 0);
-	authtype = prompt_user("AuthType: ", 0);
-	s_port = prompt_user("Port: ", 0);
+    user = prompt_user("User: ", 0);
+    domain = prompt_user("Domain: ", 0);
+    server = prompt_user("Server: ", 0);
+    protocol = prompt_user("Protocol: ", 0);
+    object = prompt_user("Object: ", 0);
+    authtype = prompt_user("AuthType: ", 0);
+    s_port = prompt_user("Port: ", 0);
 
-	if (s_port)
-		sscanf(s_port, "%u", &port);
+    if (s_port)
+        sscanf(s_port, "%u", &port);
 
-	g_free(s_port);
+    g_free(s_port);
 
-	pass = prompt_user("Password: ", PROMPT_NO_ECHO);
+    pass = prompt_user("Password: ", PROMPT_NO_ECHO);
 
-	result = gnome_keyring_set_network_password_sync(keyring, user, domain,
-                server, object, protocol, authtype, port, pass, &item_id);
+    result = gnome_keyring_set_network_password_sync(keyring, user, domain,
+                                                     server, object, protocol, authtype, port, pass, &item_id);
 
-	gnome_keyring_memory_free(pass);
-	g_free(user);
-	g_free(domain);
-	g_free(server);
-	g_free(protocol);
-	g_free(object);
-	g_free(authtype);
+    gnome_keyring_memory_free(pass);
+    g_free(user);
+    g_free(domain);
+    g_free(server);
+    g_free(protocol);
+    g_free(object);
+    g_free(authtype);
 
-	if (result != GNOME_KEYRING_RESULT_OK) {
-		g_critical("failed storing to keyring: %s",
-			gnome_keyring_result_to_message(result));
-		return 1;
-	}
+    if (result != GNOME_KEYRING_RESULT_OK) {
+        g_critical("failed storing to keyring: %s",
+                   gnome_keyring_result_to_message(result));
+        return 1;
+    }
 
-	return 0;
+    return 0;
 }
 
 static int erase_item(int argc, char *argv[])
 {
-	GnomeKeyringResult result;
-	GList *entries;
-	char *user;
-	char *domain;
-	char *server;
-	char *object;
-	char *protocol;
-	char *authtype;
-	char *s_port;
-	guint32 port = 0;
-	GnomeKeyringNetworkPasswordData *pw;
+    GnomeKeyringResult result;
+    GList *entries;
+    char *user;
+    char *domain;
+    char *server;
+    char *object;
+    char *protocol;
+    char *authtype;
+    char *s_port;
+    guint32 port = 0;
+    GnomeKeyringNetworkPasswordData *pw;
 
-	if (argc != 1) {
-		fprintf(stderr, "Usage: %s\n", argv[0]);
-		return 1;
-	}
+    if (argc != 1) {
+        fprintf(stderr, "Usage: %s\n", argv[0]);
+        return 1;
+    }
 
-	user = prompt_user("User: ", 0);
-	domain = prompt_user("Domain: ", 0);
-	server = prompt_user("Server: ", 0);
-	protocol = prompt_user("Protocol: ", 0);
-	object = prompt_user("Object: ", 0);
-	authtype = prompt_user("AuthType: ", 0);
-	s_port = prompt_user("Port: ", 0);
+    user = prompt_user("User: ", 0);
+    domain = prompt_user("Domain: ", 0);
+    server = prompt_user("Server: ", 0);
+    protocol = prompt_user("Protocol: ", 0);
+    object = prompt_user("Object: ", 0);
+    authtype = prompt_user("AuthType: ", 0);
+    s_port = prompt_user("Port: ", 0);
 
-	if (s_port)
-		sscanf(s_port, "%u", &port);
+    if (s_port)
+        sscanf(s_port, "%u", &port);
 
-	g_free(s_port);
+    g_free(s_port);
 
-	result = gnome_keyring_find_network_password_sync(user, domain,
-                server, object, protocol, authtype, port, &entries);
+    result = gnome_keyring_find_network_password_sync(user, domain,
+                                                      server, object, protocol, authtype, port, &entries);
 
-	g_free(user);
-	g_free(domain);
-	g_free(server);
-	g_free(protocol);
-	g_free(object);
-	g_free(authtype);
+    g_free(user);
+    g_free(domain);
+    g_free(server);
+    g_free(protocol);
+    g_free(object);
+    g_free(authtype);
 
-	if (result != GNOME_KEYRING_RESULT_OK) {
-		g_critical("failed searching for entry: %s",
-			gnome_keyring_result_to_message(result));
-		return 1;
-	}
+    if (result != GNOME_KEYRING_RESULT_OK) {
+        g_critical("failed searching for entry: %s",
+                   gnome_keyring_result_to_message(result));
+        return 1;
+    }
 
-	pw = (GnomeKeyringNetworkPasswordData*) entries->data;
+    pw = (GnomeKeyringNetworkPasswordData*) entries->data;
 
-	result = gnome_keyring_item_delete_sync(pw->keyring, pw->item_id);
+    result = gnome_keyring_item_delete_sync(pw->keyring, pw->item_id);
 
-	if (result != GNOME_KEYRING_RESULT_OK) {
-		g_critical("failed deleting item: %s",
-			gnome_keyring_result_to_message(result));
-		gnome_keyring_network_password_list_free(entries);
-		return 1;
-	}
+    if (result != GNOME_KEYRING_RESULT_OK) {
+        g_critical("failed deleting item: %s",
+                   gnome_keyring_result_to_message(result));
+        gnome_keyring_network_password_list_free(entries);
+        return 1;
+    }
 
-	gnome_keyring_network_password_list_free(entries);
+    gnome_keyring_network_password_list_free(entries);
 
-	return 0;
+    return 0;
 }
+
+static int update_password(int argc, char *argv[])
+{
+    GnomeKeyringResult result;
+    GList *entries;
+    GList *l;
+    char *user;
+    char *domain;
+    char *server;
+    char *object;
+    char *protocol;
+    char *authtype;
+    char *s_port;
+    guint32 port = 0;
+    char *oldpwd;
+    char *newpwd;
+    guint32 item_id;
+    int ret = 0;
+
+    if (argc != 1) {
+        fprintf(stderr, "Usage: %s\n", argv[0]);
+        return 1;
+    }
+
+    user = prompt_user("User (optional): ", 0);
+    domain = prompt_user("Domain (optional): ", 0);
+    server = prompt_user("Server (optional): ", 0);
+    protocol = prompt_user("Protocol (optional): ", 0);
+    object = prompt_user("Object (optional): ", 0);
+    authtype = prompt_user("AuthType (optional): ", 0);
+    s_port = prompt_user("Port (optional): ", 0);
+
+    if (s_port)
+        sscanf(s_port, "%u", &port);
+
+    g_free(s_port);
+    oldpwd = prompt_user("Old password (required): ", PROMPT_NO_ECHO);
+    newpwd = prompt_user("New password (required): ", PROMPT_NO_ECHO);
+
+    result = gnome_keyring_find_network_password_sync(user, domain,
+                                                      server, object, protocol, authtype, port, &entries);
+
+    if (result != GNOME_KEYRING_RESULT_OK) {
+        g_critical("failed searching for entries: %s", gnome_keyring_result_to_message(result));
+        ret = 1;
+    }
+    else {
+        for (l = g_list_first(entries); l; l = g_list_next (l)) {
+            GnomeKeyringNetworkPasswordData *pw = (GnomeKeyringNetworkPasswordData *) l->data;
+
+            if (!strcmp(pw->password, oldpwd)) {
+                printf("Updating item id: %u, "
+                       "Keyring: %s, "
+                       "protocol: %s, "
+                       "server: %s, "
+                       "port: %u, "
+                       "user: %s, "
+                       "domain: %s\n",
+                       pw->item_id,
+                       pw->keyring,
+                       pw->protocol,
+                       pw->server,
+                       pw->port,
+                       pw->user,
+                       pw->domain);
+
+                result = gnome_keyring_set_network_password_sync(pw->keyring,
+                                                                 pw->user,
+                                                                 pw->domain,
+                                                                 pw->server,
+                                                                 pw->object,
+                                                                 pw->protocol,
+                                                                 pw->authtype,
+                                                                 pw->port,
+                                                                 newpwd,
+                                                                 &item_id);
+
+                if (result != GNOME_KEYRING_RESULT_OK) {
+                    g_critical("failed updating entries: %s", gnome_keyring_result_to_message(result));
+                    ret = 1;
+                    break;
+                }
+            }
+        }
+    }
+
+    g_free(user);
+    g_free(domain);
+    g_free(server);
+    g_free(protocol);
+    g_free(object);
+    g_free(authtype);
+    gnome_keyring_memory_free(oldpwd);
+    gnome_keyring_memory_free(newpwd);
+
+    gnome_keyring_network_password_list_free(entries);
+
+    return ret;
+}
+
 
 #define ARRAY_LEN(_x) (sizeof(_x) / sizeof(*(_x)))
 
 int main (int argc, char *argv[])
 {
-	const char *subcmd;
-	size_t i;
-	struct { const char* name; int (*func)(int, char **); } subcmds[] = {
-		{ "lock", lock_keyring },
-		{ "unlock", unlock_keyring },
-		{ "list", list_keyrings },
-		{ "info", get_keyring_info },
-		{ "items", list_items },
-		{ "create", create_keyring },
-		{ "delete", delete_keyring },
-		{ "lookup", lookup_item },
-		{ "store", store_item },
-		{ "erase", erase_item },
-	};
+    const char *subcmd;
+    size_t i;
+    struct { const char* name; int (*func)(int, char **); } subcmds[] = {
+        { "lock", lock_keyring },
+        { "unlock", unlock_keyring },
+        { "list", list_keyrings },
+        { "info", get_keyring_info },
+        { "items", list_items },
+        { "create", create_keyring },
+        { "delete", delete_keyring },
+        { "lookup", lookup_item },
+        { "store", store_item },
+        { "erase", erase_item },
+        { "updatepwd", update_password }
+    };
 
-	if (argc < 2) {
-		fprintf(stderr, "Usage: %s <%s", argv[0], subcmds[0].name);
-		for (i = 1; i < ARRAY_LEN(subcmds); i++)
-			fprintf(stderr, "|%s", subcmds[i].name);
-		fputs("> [args]\n", stderr);
-		return 1;
-	}
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <%s", argv[0], subcmds[0].name);
+        for (i = 1; i < ARRAY_LEN(subcmds); i++)
+            fprintf(stderr, "|%s", subcmds[i].name);
+        fputs("> [args]\n", stderr);
+        return 1;
+    }
 
-	g_set_application_name("Gnome Keyring CLI");
+    g_set_application_name("Gnome Keyring CLI");
 
-	subcmd = argv[1];
-	for (i = 0; i < ARRAY_LEN(subcmds); i++)
-		if (!strcmp(subcmds[i].name, subcmd))
-			return subcmds[i].func(argc-1, argv+1);
+    subcmd = argv[1];
+    for (i = 0; i < ARRAY_LEN(subcmds); i++)
+        if (!strcmp(subcmds[i].name, subcmd))
+            return subcmds[i].func(argc-1, argv+1);
 
-	g_critical("invalid sub-command \"%s\"\n", subcmd);
+    g_critical("invalid sub-command \"%s\"\n", subcmd);
 
-	return 1;
+    return 1;
 }
